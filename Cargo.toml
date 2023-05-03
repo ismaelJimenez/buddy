@@ -7,7 +7,7 @@ documentation = "https://github.com/ismaelJimenez/buddy"
 homepage = "https://github.com/ismaelJimenez/buddy"
 repository = "https://github.com/ismaelJimenez/buddy"
 readme = "README.md"
-keywords = ["c", "c++", "cpp", "cmake", "bazel", "cxx", "package"]
+keywords = ["c", "c++", "cpp", "cxx", "package"]
 categories = ["command-line-utilities", "configuration", "build-utils"]
 license = "MIT"
 
