@@ -1,7 +1,15 @@
 [package]
 name = "buddy"
 version = "0.0.1"
-edition = "2021"
+authors = ["Ismael Jimenez"]
+description = "The C++ package manager"
+documentation = "https://github.com/ismaelJimenez/buddy"
+homepage = "https://github.com/ismaelJimenez/buddy"
+repository = "https://github.com/ismaelJimenez/buddy"
+readme = "README.md"
+keywords = ["c", "c++", "cpp", "cmake", "bazel", "cxx", "package"]
+categories = ["command-line-utilities", "configuration", "build-utils"]
+license = "MIT"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
