@@ -20,9 +20,19 @@ fn new_package(package_name: &str) -> std::io::Result<()> {
         );
         fs::create_dir(package_name)?;
         fs::create_dir(PathBuf::from(package_name).join("src"))?;
+        fs::create_dir(PathBuf::from(package_name).join("test"))?;
 
         let mut file = File::create(PathBuf::from(package_name).join("WORKSPACE"))?;
-        file.write_all(b"")?;
+        write!(
+            file,
+            r#"load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
+
+http_archive(
+  name = "com_google_googletest",
+  urls = ["https://github.com/google/googletest/archive/5ab508a01f9eb089207ee87fd547d290da39d015.zip"],
+  strip_prefix = "googletest-5ab508a01f9eb089207ee87fd547d290da39d015",
+)"#          
+        )?;
 
         let mut file = File::create(PathBuf::from(package_name).join("Buddy.toml"))?;
         write!(
@@ -35,6 +45,9 @@ edition = "2023"
 [dependencies]"#,
             package_name
         )?;
+
+        let mut file = File::create(PathBuf::from(package_name).join(".bazelrc"))?;
+        write!(file, r#"build --cxxopt=-std=c++17"#)?;
 
         let mut file = File::create(PathBuf::from(package_name).join("src").join("BUILD"))?;
 
@@ -74,6 +87,37 @@ int main(int argc, char** argv) {{
   std::cout << get_greet(who) << std::endl;
   print_localtime();
   return 0;
+}}"#
+        )?;
+
+        let mut file = File::create(PathBuf::from(package_name).join("test").join("BUILD"))?;
+
+        write!(
+            file,
+            r#"cc_test(
+  name = "hello_test",
+  size = "small",
+  srcs = ["hello_test.cc"],
+  deps = ["@com_google_googletest//:gtest_main"],
+)"#
+        )?;
+
+        let mut file = File::create(
+            PathBuf::from(package_name)
+                .join("test")
+                .join("hello_test.cc"),
+        )?;
+
+        write!(
+            file,
+            r#"#include <gtest/gtest.h>
+
+// Demonstrate some basic assertions.
+TEST(HelloTest, BasicAssertions) {{
+  // Expect two strings not to be equal.
+  EXPECT_STRNE("hello", "world");
+  // Expect equality.
+  EXPECT_EQ(7 * 6, 42);
 }}"#
         )?;
 
@@ -172,6 +216,49 @@ fn run(bazel_bin: &PathBuf, args: &[String], config: &Config) -> Result<(), Box<
     Ok(())
 }
 
+fn test(bazel_bin: &PathBuf, args: &[String]) -> Result<(), Box<dyn Error>> {
+    let mut cmd = Command::new(bazel_bin);
+
+    // cmd.arg("--output_base=target/build");
+    cmd.arg("test");
+    cmd.arg("--test_output=all");
+    cmd.arg("--symlink_prefix=target/");
+
+    if args.len() != 0 {
+        for arg in args {
+            cmd.arg(arg);
+        }
+    } else {
+        cmd.arg("//test/...");
+    }
+
+    let mut child = cmd
+        .stderr(Stdio::piped())
+        .spawn()
+        .expect("Failed to execute command");
+
+    let stderr = child.stderr.take().unwrap();
+    let reader = io::BufReader::new(stderr);
+
+    for line in reader.lines() {
+        let line = line.unwrap();
+        if line.starts_with("INFO:") {
+            let (_, message) = line.split_at(6);
+            println!("{} {}", "INFO:".green(), message);
+        } else {
+            println!("{}", line);
+        }
+    }
+
+    // Not sure why is still being generated. Eitherway, we get rid of it.
+    let folder_path = Path::new("bazel-out");
+    if folder_path.exists() {
+        fs::remove_dir_all(folder_path).expect("Failed to delete folder");
+    }
+
+    Ok(())
+}
+
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
 #[command(propagate_version = true)]
@@ -190,6 +277,9 @@ enum Commands {
 
     /// Run a binary or example of the local package
     Run { targets: Vec<String> },
+
+    /// Run the tests
+    Test { targets: Vec<String> },
 }
 
 #[derive(Debug, Deserialize)]
@@ -238,5 +328,6 @@ fn main() {
         Commands::New { path } => new_package(&path).unwrap(),
         Commands::Build { targets } => build(&bazel_bin, &targets).unwrap(),
         Commands::Run { targets } => run(&bazel_bin, &targets, &config).unwrap(),
+        Commands::Test { targets } => test(&bazel_bin, &targets).unwrap(),
     }
 }
