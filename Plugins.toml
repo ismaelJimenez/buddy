@@ -1,0 +1,9 @@
+[google_test]
+build_rule =  """http_archive(
+  name = "com_google_googletest",
+  urls = ["https://github.com/google/googletest/archive/{version}.zip"],
+  strip_prefix = "googletest-{version}",
+)""""
+versions = { "1.13.0" = "b796f7d44681514f58a683a3a71ff17c94edb0c1",
+             "1.12.1" = "58d77fa8070e8cec2dc1ed015d66b454c8d78850"}
+
